@@ -1,5 +1,4 @@
-// src/components/DndProviderWrapper.tsx
-
+"use client";
 import React, { useState } from "react";
 import {
   DndContext,
@@ -11,6 +10,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { useNavigate } from "react-router-dom";
 
 import DragOverlayComponent from "./DragOverlayComponent";
 import TransactionList from "./TransactionList";
@@ -42,14 +42,14 @@ const DndProviderWrapper = () => {
   const [draggedItem, setDraggedItem] = useState<{ label?: string; name?: string } | null>(null);
   const [draggedType, setDraggedType] = useState<"operation" | "transaction" | null>(null);
 
+const navigate = useNavigate();
+
   const findItem = (id: string) => {
-    // جستجو در عملیات‌ها
     for (const tx of transactions) {
       const item = tx.operations.find((op) => op.id === id);
       if (item) return { item, tx, isTx: false };
     }
 
-    // جستجو در تراکنش‌ها
     const tx = transactions.find((tx) => tx.name === id);
     if (tx) return { tx, isTx: true };
 
@@ -76,17 +76,14 @@ const DndProviderWrapper = () => {
 
     if (!over || !activeId) return;
 
-    // حذف آیتم روی سطل آشغال
     if (over.id === "trash-bin") {
       const { isTx } = findItem(active.id);
 
       if (isTx) {
-        // حذف تراکنش
         if (window.confirm(`Are you sure you want to delete transaction "${active.id}"?`)) {
           setTransactions((prev) => prev.filter((tx) => tx.name !== active.id));
         }
       } else {
-        // حذف عملیات
         setTransactions((prev) =>
           prev.map((tx) => ({
             ...tx,
@@ -101,7 +98,6 @@ const DndProviderWrapper = () => {
       return;
     }
 
-    // جابجایی داخل لیست عملیات
     const oldTx = transactions.find((tx) =>
       tx.operations.some((op) => op.id === active.id)
     );
@@ -160,31 +156,45 @@ const DndProviderWrapper = () => {
     setTransactions((prev) => [...prev, { name, operations: [] }]);
   };
 
-    const sensors = useSensors(
-  useSensor(PointerSensor),
-  useSensor(TouchSensor) // ✅ فعال کردن Drag با لمس صفحه موبایل
-);
+  const handleExport = () => {
+    localStorage.setItem("export-transactions", JSON.stringify(transactions));
+    navigate("/export");
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(TouchSensor)
+  );
 
   return (
-    <DndContext
-    sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <TrashBin />
-      <TransactionList
-        transactions={transactions}
-        onAddOperation={handleAddOperation}
-        onDeleteOperation={handleDeleteOperation}
-        onAddTransaction={addTransaction}
-      />
-      <DragOverlayComponent
-        activeId={activeId}
-        draggedItem={draggedItem}
-        isTransaction={draggedType === "transaction"}
-      />
-    </DndContext>
+    <>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <TrashBin />
+        <TransactionList
+          transactions={transactions}
+          onAddOperation={handleAddOperation}
+          onDeleteOperation={handleDeleteOperation}
+          onAddTransaction={addTransaction}
+        />
+        <DragOverlayComponent
+          activeId={activeId}
+          draggedItem={draggedItem}
+          isTransaction={draggedType === "transaction"}
+        />
+      </DndContext>
+
+      {/* ✅ دکمه نمایش JSON */}
+      <div className="d-flex justify-content-center mt-4">
+        <button className="btn btn-success" onClick={handleExport}>
+          نمایش JSON تراکنش‌ها
+        </button>
+      </div>
+    </>
   );
 };
 
